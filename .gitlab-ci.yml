@@ -1,7 +1,7 @@
 # lieshou-cloud · gateway-services 质量门禁（GitLab CI · 2026-09）
 # 前置：huntercat-digital 组级 docker runner（mesh-dell · tags: java,wqc）
 # 门 = mvn -B -ntp verify（含 spotless check）——不留"跳过格式"的假绿
-stages: [verify]
+stages: [verify, deploy]
 
 variables:
   # 内网 Caddy 自签证书不在 job 容器信任库 → 放行 git 传输（对齐 mobile-web 先例）
@@ -29,3 +29,30 @@ verify:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_TAG'
+
+# 制品发布：仅 tag 触发，发到内网 Nexus maven-releases（凭证在项目 CI 变量 NEXUS_DEPLOY_*）
+# 坐标 cn.huntercat:lieshoucloud-gateway:<version>（版本继承 framework-parent，故 tag 必须 vX.Y.Z 对齐）
+# 只发本仓模块：framework-* 由 framework 仓自己发布（同坐标重复发布会撞 Nexus 重发策略）
+deploy:
+  stage: deploy
+  timeout: 30m
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  before_script:
+    # 根 pom 的 <module>framework</module> 必须真的存在（空目录 → "Child module does not exist"）
+    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.ts.huntercat.cn/huntercat-digital/".insteadOf "ssh://git@gitlab.ts.huntercat.cn:22220/huntercat-digital/"
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
+  script:
+    # tag 必须与 pom 版本一致，否则拒发（防止 v0.4.0 下发成 0.3.1）
+    - |
+      set -e
+      ver=$(mvn -B -q -pl services/gateway help:evaluate -Dexpression=project.version -DforceStdout | tail -1)
+      [ "$CI_COMMIT_TAG" = "v$ver" ] || { echo "❌ tag $CI_COMMIT_TAG 与 pom 版本 v$ver 不一致"; exit 1; }
+      echo "发布 cn.huntercat:lieshoucloud-gateway:$ver → Nexus maven-releases"
+    # 内部 CA 进 JVM 信任库（job 容器不认 Caddy 自签 CA；CA 由 runner 挂载卷 /root/.m2 提供）
+    - keytool -importcert -noprompt -trustcacerts -alias caddy-root -file /root/.m2/caddy-root.crt -keystore "$JAVA_HOME/lib/security/cacerts" -storepass changeit
+    # servers = 发布凭证；mirror 只服务读（*,!nexus 不劫持 distributionManagement 的 nexus）
+    - printf '<settings><servers><server><id>nexus</id><username>%s</username><password>%s</password></server></servers><mirrors><mirror><id>nexus-public</id><url>https://nexus.ts.huntercat.cn/repository/maven-public/</url><mirrorOf>*,!nexus</mirrorOf></mirror></mirrors></settings>' "$NEXUS_DEPLOY_USER" "$NEXUS_DEPLOY_PASS" > /tmp/ci-settings.xml
+    # -pl 只发 gateway（依赖 framework-* 从 maven-public/本地库解析）；测试已在 verify 阶段卡过
+    - mvn -B -ntp -s /tmp/ci-settings.xml -pl services/gateway -DskipTests deploy
