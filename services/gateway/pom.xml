@@ -7,8 +7,9 @@
 
     <parent>
         <groupId>cn.huntercat</groupId>
-        <artifactId>lieshoucloud-services-open</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <artifactId>framework-parent</artifactId>
+        <version>0.3.0</version>
+        <relativePath>../../framework/framework-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>lieshoucloud-gateway</artifactId>
