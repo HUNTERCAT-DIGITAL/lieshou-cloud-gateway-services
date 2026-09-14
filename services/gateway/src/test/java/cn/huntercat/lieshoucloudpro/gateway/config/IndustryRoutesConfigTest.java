@@ -53,7 +53,16 @@ class IndustryRoutesConfigTest {
           "project-route",
           "org-route",
           "employee-route",
-          "metric-route");
+          "metric-route",
+          "portfolio-route",
+          "document-route",
+          "data-asset-route",
+          "executive-report-route",
+          // ⚠️ 以下两条是**具体客户**的路由（xiehui 协会 / jiangcai 江财），却注册在共享网关里。
+          //    它们是本测试漏项的直接原因，也属“共享层写死客户”的设计债：
+          //    远期应由 `lsc.industry-routes` 之类的配置（edition 注入）驱动，而不是硬编码。
+          "xiehui-route",
+          "jiangcai-route");
 
   private RouteLocator build(boolean enabled) throws Exception {
     IndustryRoutesConfig config = new IndustryRoutesConfig();

@@ -1,0 +1,31 @@
+# lieshou-cloud · gateway-services 质量门禁（GitLab CI · 2026-09）
+# 前置：huntercat-digital 组级 docker runner（mesh-dell · tags: java,wqc）
+# 门 = mvn -B -ntp verify（含 spotless check）——不留"跳过格式"的假绿
+stages: [verify]
+
+variables:
+  # 内网 Caddy 自签证书不在 job 容器信任库 → 放行 git 传输（对齐 mobile-web 先例）
+  GIT_SSL_NO_VERIFY: "true"
+  # 不用 GitLab 的隐式递归：它在 before_script 之前执行且不 sync URL（房内事故结论），
+  # 子仓 URL 是 ssh://…:22220/…，job 容器里没有私钥 → 必须自己重写成 CI_JOB_TOKEN 的 HTTPS
+  GIT_SUBMODULE_STRATEGY: none
+  # 依赖缓存由 runner 宿主卷提供（/srv/gitlab-runner-cache/m2 → /root/.m2）
+
+default:
+  image: maven:3.9-eclipse-temurin-21
+  tags: [java, wqc]
+
+verify:
+  stage: verify
+  timeout: 30m
+  before_script:
+    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.ts.huntercat.cn/huntercat-digital/".insteadOf "ssh://git@gitlab.ts.huntercat.cn:22220/huntercat-digital/"
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
+  script:
+    - java -version
+    - mvn -B -ntp verify
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
