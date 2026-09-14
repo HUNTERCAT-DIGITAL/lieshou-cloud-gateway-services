@@ -17,6 +17,9 @@
     </modules>
 
     <properties>
+        <!-- ===== 上游框架（lieshou-framework · 上游同源唯一）：升级只改这一行 ===== -->
+        <framework.version>0.2.0</framework.version>
+
         <!-- ===== Java ===== -->
         <java.version>21</java.version>
         <maven.compiler.release>21</maven.compiler.release>
@@ -162,7 +165,7 @@
             <dependency>
                 <groupId>cn.huntercat</groupId>
                 <artifactId>framework-jwt</artifactId>
-                <version>0.1.0</version>
+                <version>${framework.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
