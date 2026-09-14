@@ -286,23 +286,40 @@ Nexus maven-releases
 - [ ] **4 仓统一整改：服务仓自立版本 + framework 出 reactor**（解决 R1/R2）：版本与 framework 解耦（显式 `<version>`）、`<parent>` 去 `relativePath` 或接受 Nexus 解析、根 pom 去掉 `framework` 模块、CI 防漂移校验（submodule 里 `framework-parent` 版本 == 声明版本 == Nexus 存在）
 - [ ] **交付仓从 Nexus 取 gateway 制品**（去掉 vendor `framework` 源码与 `-am`）：`Dockerfile` 改 `dependency:copy` + 镜像构建走 Jenkins；同批处理 user/auth/admin/approval
 - [ ] **admin-services** 尚未在本批（同批三仓已覆盖 user/auth/approval，admin 待做）
+- [ ] **修 approval-services 的 `deploy` 缺 `before_script`**（本轮审查实测发现，非本仓）：其 deploy 日志明写 `Skipping Git submodules setup`，能跑通只是因为同 pipeline 的 `verify`（有 `before_script`）先把**共享 build 目录**里的 `framework/` 填好了 —— 一旦 verify 不先跑或 build 目录被清，`-pl` 仍会在 POM collection 阶段报 `Child module .../framework ... does not exist`。gateway 采用了带 `before_script` 的正确形式
+- [ ] **收紧 deploy 触发与守卫**（本仓有历史非 `v*` tag：`patrol-2026-08` / `release-2026-09` / `share-readonly-2026-08`）：① rules 改 `$CI_COMMIT_TAG =~ /^v/`；② 校验块加 `set -eo pipefail`（现 `| tail -1` 会吞掉 `help:evaluate` 的失败，仅靠下一行相等判定兜底）。现状是 **fail-closed**（打了会红、但绝不误发），故与 4 仓一致优先，纳入统一整改批
 - [ ] 新建**服务仓专用 Nexus 用户**（最小权限、可单独吊销）替代共享 deploy 账号（D7 的升级路径）
 - [ ] runner 支持 docker（挂 `/var/run/docker.sock` 或 dind）——同时也是 L2 外围文件批的 PG 测试缺口前置
 - [ ] 重置 runner token（历史遗留项）
 - [ ] L2 外围文件（LICENSE / AGENTS.md / CHANGELOG.md / `.ai/`）——本仓仍缺，属 L2 那份 spec
 
-## 10. 证据清单（实施时回填，格式 `<环境>: <命令> → <结果>`）
+## 10. 证据清单（2026-09-14 实测回填）
 
-- [ ] `baseline: dev@worktree mvn -B -ntp verify → <结果>`
-- [ ] `pom: services/gateway help:evaluate project.version → 0.3.1`
-- [ ] `diff: git diff --stat → 4 files，与 auth 1372ffd 同形`
-- [ ] `pin: git ls-tree HEAD framework → d023687`
-- [ ] `MR: <!N> pipeline #<id> → success`
-- [ ] `tag: git ls-remote --tags origin v0.3.1 → v0.3.1^{} = <merged sha>`
-- [ ] `publish: pipeline #<id>（ref v0.3.1）→ verify success / deploy success`
-- [ ] `readback: curl -sI .../lieshoucloud-gateway-0.3.1.jar → 200, bytes=<N>`
-- [ ] `consume: clean local repo dependency:get（gateway 0.3.1）→ BUILD SUCCESS`
-- [ ] `nexus search: name=lieshoucloud-gateway → 0.3.1 jar+pom`
+**基线与本地门**
+
+- [x] `baseline: dev@1de96e6（worktree）mvn -B -ntp verify → BUILD SUCCESS`；Reactor 13 条（framework-* 0.3.0 ×11 + gateway 0.3.0 + aggregator 0.1.0），gateway `Tests run: 10, Failures: 0`，84s
+- [x] `pom: mvn -B -q -pl services/gateway help:evaluate -Dexpression=project.version -DforceStdout → 0.3.1`
+- [x] `diff: git show --name-status 924abcd → 恰好 4 路径`（`.gitignore` / `.gitlab-ci.yml` / `framework` / `services/gateway/pom.xml`），无越界；`git diff --numstat services/gateway/pom.xml → 1 1`
+- [x] `pin: git ls-tree 924abcd framework → 160000 commit d023687cc4c2b9463d17724a2fd699ff92aeebfb`（= framework `v0.3.1`；submodule 内 `framework-parent` 也是 `0.3.1`）
+- [x] `gate（改动后）: mvn -B -ntp verify → BUILD SUCCESS`，`lieshou-cloud · Gateway 0.3.1 … SUCCESS`，`Tests run: 10, Failures: 0`（与基线同数）
+- [x] `范围证明: mvn -B -ntp -pl services/gateway -DskipTests deploy -Dmaven.deploy.skip=true →` 只有 `Building lieshou-cloud · Gateway 0.3.1`，`Building framework*` 计数 **0**，`Skipping artifact deployment`
+- [x] `sibling 同构: 与 user 逐字同构（仅注释措辞）；与 auth 仅注释差异；与 approval 差在 approval 缺 deploy 的 before_script`（见 §9 新增项）
+
+**发布链**
+
+- [x] `MR: !5 → pipeline 828 success → squash 合并 dbcdb07d7a540381ff2ba0804990f2250fb0457b（main tip d631494647508feeff50026c43710d78c6b6a30c）`
+- [x] `tag: git ls-remote origin 'refs/tags/v0.3.1*' → 7856333… refs/tags/v0.3.1 / d631494… refs/tags/v0.3.1^{}`（peel 到 main tip）
+- [x] `publish: pipeline 853（ref v0.3.1）→ verify success + deploy success`；`deploy` job 2565 日志：`发布 cn.huntercat:lieshoucloud-gateway:0.3.1 → Nexus maven-releases` + `BUILD SUCCESS`
+- [x] `readback: curl -sI .../lieshoucloud-gateway-0.3.1.jar → HTTP/2 200`；`.pom → HTTP/2 200`；pom 内 `<artifactId>framework-parent</artifactId>` 版本 = `0.3.1`
+- [x] `nexus search: name=lieshoucloud-gateway → 0.3.1 .jar 52,659,099 B（15:54:59Z）/ .pom 3,915 B（15:54:57Z）` + sha1/md5
+- [x] `consume（铁证）: 干净本地库 /tmp/m2-gw-acceptance 执行 mvn dependency:get -Dartifact=cn.huntercat:lieshoucloud-gateway:0.3.1 -DremoteRepositories=nexus::default::…/maven-public/ → BUILD SUCCESS（4:00）`；落盘 `lieshoucloud-gateway-0.3.1.jar 52,659,099 B`，`sha1 bdb717b2a6d2bb95d824805b3ba77e3f906476b3` **与 Nexus 登记值逐字相同**
+- [x] `制品形态: MANIFEST.MF → Main-Class: org.springframework.boot.loader.launch.JarLauncher / Start-Class: cn.huntercat.lieshoucloudpro.gateway.GatewayApplication`（fat jar，可直接 `java -jar`）
+
+**基础设施**
+
+- [x] `project 22 variables → NEXUS_DEPLOY_USER / NEXUS_DEPLOY_PASS 均 masked=true protected=true`；与 project 13 的**值 sha256 前缀逐字相同**（`f051247f20fa` / `cb86d4771149`，只比摘要、未打印明文）
+- [x] `project 22 protected_tags → [('v*', ['Maintainers'])]`
+- [x] `runner 观测: 发布期间 runner 10 被另两仓 job 占满（concurrent=3）→ 本仓 tag pipeline 排队约 13 分钟才 pickup`（R8 实测命中，未造成失败）
 
 ## 11. Spec 自检
 
