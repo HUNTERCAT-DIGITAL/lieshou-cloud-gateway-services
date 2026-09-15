@@ -1,52 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  lieshou-cloud-pro · 本地 / CI 通用 Maven 镜像配置
-  优先走阿里云镜像 (国内快), 兜底走 Maven Central
-  4 个后端 Dockerfile 的 builder 阶段都会 COPY 此文件到 /root/.m2/settings.xml
+  lieshou-cloud · Maven 私服配置（唯一上游 = 内网 Nexus）
+  - maven-public 是 group 仓：maven-releases（cn.huntercat 自有制品，如 framework-*） + maven-central 代理
+  - 只 mirror，不需要凭证（匿名可读）；DEPLOY 的 <server> 由 CI / 本机 ~/.m2/settings.xml 提供
+  - ⚠️ Nexus 由 Caddy **内部 CA** 签发 → 容器里必须先信任该 CA（见 Dockerfile 的 keytool 步骤）
 -->
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
                               https://maven.apache.org/xsd/settings-1.0.0.xsd">
-
   <mirrors>
-    <!-- central: 拦截 Maven Central -->
     <mirror>
-      <id>aliyun-central</id>
-      <name>aliyun central</name>
-      <url>https://maven.aliyun.com/repository/central</url>
-      <mirrorOf>central</mirrorOf>
-    </mirror>
-    <!-- public: 聚合 (jcenter/spring/etc), 兜底所有其它仓库 -->
-    <mirror>
-      <id>aliyun-public</id>
-      <name>aliyun public</name>
-      <url>https://maven.aliyun.com/repository/public</url>
-      <mirrorOf>*,!central</mirrorOf>
+      <id>nexus-public</id>
+      <name>Internal Nexus (maven-public)</name>
+      <url>https://nexus.ts.huntercat.cn/repository/maven-public/</url>
+      <mirrorOf>*</mirrorOf>
     </mirror>
   </mirrors>
-
-  <profiles>
-    <profile>
-      <id>default-profile</id>
-      <repositories>
-        <repository>
-          <id>aliyun-spring</id>
-          <url>https://maven.aliyun.com/repository/spring</url>
-          <releases><enabled>true</enabled></releases>
-          <snapshots><enabled>false</enabled></snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>aliyun-public-plugins</id>
-          <url>https://maven.aliyun.com/repository/public</url>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-  </profiles>
-
-  <activeProfiles>
-    <activeProfile>default-profile</activeProfile>
-  </activeProfiles>
 </settings>

@@ -1,3 +1,0 @@
-[submodule "framework"]
-	path = framework
-	url = ssh://git@gitlab.ts.huntercat.cn:22220/huntercat-digital/lieshou-framework.git

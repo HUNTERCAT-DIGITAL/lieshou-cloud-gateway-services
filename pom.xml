@@ -5,9 +5,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <!--
-    auth-services 聚合构建（submodule 引用模式，同 lieshou-boot）：
-    framework（→ lieshou-framework submodule） + services（common/jwt-support/auth）
-    一次构建：mvn -f pom.xml package（reactor 内解析 framework-* 依赖，无需 install）
+    gateway-services 聚合构建（单一模块）：
+    services/gateway
+    上游 framework 不再随仓，统一从内网 Nexus 解析
+    （https://nexus.ts.huntercat.cn/repository/maven-public/）。
+    一次构建：mvn -f pom.xml package
   -->
   <groupId>cn.huntercat</groupId>
   <artifactId>lieshoucloud-gateway-services-aggregator</artifactId>
@@ -17,7 +19,6 @@
   <name>gateway-services</name>
 
   <modules>
-    <module>framework</module>
     <module>services/gateway</module>
   </modules>
 </project>
