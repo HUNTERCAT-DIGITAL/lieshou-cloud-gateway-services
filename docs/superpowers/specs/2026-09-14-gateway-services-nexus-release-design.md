@@ -283,7 +283,7 @@ Nexus maven-releases
 ## 9. 外部队列项（本批登记，不在本批做）
 
 - [ ] **Harbor 镜像发布**（本仓 runner 无 docker.sock → 走 Jenkins）：`harbor.ts.huntercat.cn/<project>/lieshoucloud-gateway:<version>`，**镜像 tag == jar 版本**；前置：确认镜像所属 project、机器人账号/凭据
-- [ ] **4 仓统一整改：服务仓自立版本 + framework 出 reactor**（解决 R1/R2）：版本与 framework 解耦（显式 `<version>`）、`<parent>` 去 `relativePath` 或接受 Nexus 解析、根 pom 去掉 `framework` 模块、CI 防漂移校验（submodule 里 `framework-parent` 版本 == 声明版本 == Nexus 存在）
+- [x] ~~**4 仓统一整改：服务仓自立版本 + framework 出 reactor**（解决 R1/R2）~~ → **2026-09-15 本仓已闭合**：根 pom 去掉 `framework` 模块、`<parent>` 去 `relativePath`、parent 升 0.3.3（`1e92402`，见 §12）。版本仍**继承** parent（未显式声明，作为独立议题留在队列）；submodule 已删除 ⇒ "子模块内版本漂移"校验不再适用
 - [ ] **交付仓从 Nexus 取 gateway 制品**（去掉 vendor `framework` 源码与 `-am`）：`Dockerfile` 改 `dependency:copy` + 镜像构建走 Jenkins；同批处理 user/auth/admin/approval
 - [ ] **admin-services** 尚未在本批（同批三仓已覆盖 user/auth/approval，admin 待做）
 - [ ] **修 approval-services 的 `deploy` 缺 `before_script`**（本轮审查实测发现，非本仓）：其 deploy 日志明写 `Skipping Git submodules setup`，能跑通只是因为同 pipeline 的 `verify`（有 `before_script`）先把**共享 build 目录**里的 `framework/` 填好了 —— 一旦 verify 不先跑或 build 目录被清，`-pl` 仍会在 POM collection 阶段报 `Child module .../framework ... does not exist`。gateway 采用了带 `before_script` 的正确形式
@@ -321,7 +321,35 @@ Nexus maven-releases
 - [x] `project 22 protected_tags → [('v*', ['Maintainers'])]`
 - [x] `runner 观测: 发布期间 runner 10 被另两仓 job 占满（concurrent=3）→ 本仓 tag pipeline 排队约 13 分钟才 pickup`（R8 实测命中，未造成失败）
 
-## 11. Spec 自检
+## 11. 后续更新（2026-09-15）：上游全部改走内网 Nexus
+
+**动因**：交付仓 `lieshou-delivery-dwjk` 要求后端不再用 `framework` submodule 源码构建，改为从内网 Nexus
+`maven-public` 按坐标解析 `cn.huntercat:framework-*`；且 `framework-parent` 0.3.1/0.3.2 **不含** E48 两条修复
+（SSE/异步断连不再走 JSON 错误体、兜底异常保留 Spring 自带 4xx），0.3.3 已发布 `maven-releases`，故 pin **0.3.3**。
+
+**改动**（`1e92402`，8 文件，无 Java 业务代码改动）：
+
+| 文件 | 改动 |
+| --- | --- |
+| `services/gateway/pom.xml` | parent `framework-parent` 0.3.1 → **0.3.3**，删 `<relativePath>`（否则仍走源码） |
+| `pom.xml` | `<modules>` 去掉 `framework`（framework 不在 reactor） |
+| `services/.m2-settings.xml` | 阿里云/Central 镜像 → 内网 Nexus `maven-public`（`mirrorOf=*`） |
+| `services/gateway/Dockerfile` | builder 导入 `services/.ci/caddy-root.crt`；`-s /workspace/services/.m2-settings.xml`；去掉 `-am` |
+| `.gitlab-ci.yml` | 删 submodule 步骤与 `GIT_SUBMODULE_STRATEGY`；`mvn` 加 `-s`；verify 补 CA 信任 |
+| `framework` / `.gitmodules` | submodule 删除；新增 `services/.ci/caddy-root.crt`（公钥材料） |
+| `README.md` | 同步为"上游走内网 Nexus、无 submodule" |
+
+**已验证事实**
+
+- `clean-room: /tmp/freshm2-gateway` + `services/.m2-settings.xml` → `BUILD SUCCESS`；`cn/huntercat` 下
+  `framework-parent` / `framework-jwt` / `lieshou-framework` 0.3.3 的 `_remote.repositories` 全部 = `nexus-public`，
+  `grep -rlE 'central|aliyun' --include=_remote.repositories | wc -l` = **0**
+- `ci: pipeline 944（1e92402，MR !7）→ verify success`；`merge: 0aada03`；`pipeline 946（main）→ verify success`
+- `nexus-releases: framework-parent 0.3.1/0.3.2/0.3.3 均可匿名读`；`lieshoucloud-gateway` 已发 **0.3.1**（v0.3.3 另发，见下）
+
+**发布（v0.3.3）**：tag `v0.3.3` → CI `deploy`（发布完成后的实测证据回填到本节末尾）。
+
+## 12. Spec 自检
 
 - **占位符扫描**：无 TBD/TODO；每个交付物都给了文件与行级改动，每个阶段都给了命令与期望
 - **内部一致性**：D3（继承版本）↔ §3.1 #1（只改 parent 版本）↔ §6 验收 2（`ver` 取自 `help:evaluate`）；D5（单通道）↔ §4（仅 `CI_COMMIT_TAG` 规则）↔ §9（否决快照）；D6（`-pl`）↔ §4 最后一行；D9（CI 不加回读）↔ §6 验收 3–6（回读放在验收）
