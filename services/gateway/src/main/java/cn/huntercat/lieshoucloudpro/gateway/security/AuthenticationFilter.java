@@ -169,8 +169,9 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         || path.contains("/actuator/")
         // 下游服务自定义 health 端点 (user-service: /api/users/_health 等)
         || path.endsWith("/_health")
-        // 服务间调用 (auth-service 调 user-service 拉鉴权视图)
-        || path.startsWith("/api/users/auth/")
+        // 注意：/api/users/auth/**（鉴权视图，含 BCrypt passwordHash）**不能**放行——
+        // auth-service 调 user-service 走 Nacos 服务发现直连，不经网关；
+        // 历史上误标「服务间调用」放行，导致该视图公网无凭据可读（BUG_LESSONS E56，2026-09-14）。
         // 租户自助开通（公开 · SaaS 增长路径 · issue #24）
         || path.startsWith("/api/tenants/register")
         // 设备 HTTP 接入（ADR-0040 · X-Device-Secret 设备级认证，不经 JWT）
