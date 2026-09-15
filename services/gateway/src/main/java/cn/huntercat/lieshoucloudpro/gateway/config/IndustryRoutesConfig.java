@@ -44,31 +44,31 @@ public class IndustryRoutesConfig {
     routes.route(
         "device-http-route",
         r -> r.path("/api/devices/v1/**").uri("lb://lieshoucloud-device-gateway"));
-    // ADR-0045 · 律师办案（智法云枢:案件/阶段/计时/费用/文书/函件/评审/客户价值/知识/AI）
+    // ADR-0045 · 律师办案（案件/阶段/计时/费用/文书/函件/评审/客户价值/知识/AI）
     routes.route("legal-route", r -> r.path("/api/legal/**").uri("lb://lieshoucloud-legal"));
     // 协会运营系统（xiehui · 会员/会费/财务/预算/审批/活动/报名签到/资讯/邮件/汇报）→ xiehui-service
     routes.route("xiehui-route", r -> r.path("/api/xiehui/**").uri("lb://lieshoucloud-xiehui"));
     // 校友会投融资管理平台（jiangcai · 校友董监高/上市公司画像/商机/数据任务/月报）→ jiangcai-service
     routes.route(
         "jiangcai-route", r -> r.path("/api/jiangcai/**").uri("lb://lieshoucloud-jiangcai"));
-    // 海赞总部 · 项目管控（组织/项目/里程碑/任务）→ project-service
+    //  项目管控（组织/项目/里程碑/任务）→ project-service
     routes.route("project-route", r -> r.path("/api/projects/**").uri("lb://lieshoucloud-project"));
     routes.route("org-route", r -> r.path("/api/orgs/**").uri("lb://lieshoucloud-project"));
     // 投资组合（被投企业主数据 · 2026-08 信息架构深化）→ project-service
     routes.route(
         "portfolio-route", r -> r.path("/api/portfolio/**").uri("lb://lieshoucloud-project"));
-    // 海赞总部 · 人事档案（R4.2 员工入转调离）→ project-service
+    //  人事档案（R4.2 员工入转调离）→ project-service
     routes.route(
         "employee-route", r -> r.path("/api/employees/**").uri("lb://lieshoucloud-project"));
-    // 海赞总部 · 经营指标回传（R6.1）→ project-service
+    //  经营指标回传（R6.1）→ project-service
     routes.route("metric-route", r -> r.path("/api/metrics/**").uri("lb://lieshoucloud-project"));
-    // 海赞总部 · 集团文档管理（C2 企业网盘）→ project-service
+    //  集团文档管理（C2 企业网盘）→ project-service
     routes.route(
         "document-route", r -> r.path("/api/documents/**").uri("lb://lieshoucloud-project"));
-    // 海赞总部 · 数据资产入表（C4）→ project-service
+    //  数据资产入表（C4）→ project-service
     routes.route(
         "data-asset-route", r -> r.path("/api/data-assets/**").uri("lb://lieshoucloud-project"));
-    // 海赞总部 · 高管日报（D3）→ project-service
+    //  高管日报（D3）→ project-service
     routes.route(
         "executive-report-route",
         r -> r.path("/api/executive-reports/**").uri("lb://lieshoucloud-project"));
