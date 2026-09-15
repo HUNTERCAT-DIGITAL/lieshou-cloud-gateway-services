@@ -91,7 +91,7 @@ concurrent = 3
 
 ### 0.6 消费侧现状（决定"本批做到哪一步"）
 
-交付仓（如 `lieshou-delivery-dwjk`）当前 **vendor 本仓源码**，在 `services/gateway/Dockerfile` 里
+交付仓（如 `lieshou-delivery-<client>`）当前 **vendor 本仓源码**，在 `services/gateway/Dockerfile` 里
 `mvn -f pom.xml -pl services/gateway -am clean package` 自己编 fat jar（`finalName = lieshoucloud-gateway`）。
 ⇒ **目前没有任何东西从 Nexus 取 gateway 制品**；"交付仓改成从 Nexus 取料"属于另一批（§9），本设计只负责**证明它可以被消费**。
 
@@ -323,7 +323,7 @@ Nexus maven-releases
 
 ## 11. 后续更新（2026-09-15）：上游全部改走内网 Nexus
 
-**动因**：交付仓 `lieshou-delivery-dwjk` 要求后端不再用 `framework` submodule 源码构建，改为从内网 Nexus
+**动因**：交付仓 `lieshou-delivery-<client>` 要求后端不再用 `framework` submodule 源码构建，改为从内网 Nexus
 `maven-public` 按坐标解析 `cn.huntercat:framework-*`；且 `framework-parent` 0.3.1/0.3.2 **不含** E48 两条修复
 （SSE/异步断连不再走 JSON 错误体、兜底异常保留 Spring 自带 4xx），0.3.3 已发布 `maven-releases`，故 pin **0.3.3**。
 

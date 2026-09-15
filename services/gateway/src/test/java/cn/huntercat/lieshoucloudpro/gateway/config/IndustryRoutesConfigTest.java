@@ -49,7 +49,7 @@ class IndustryRoutesConfigTest {
           "swagger-ui-iot",
           "swagger-ui-device-gateway",
           "swagger-ui-legal",
-          // 海赞总部 · 项目管控/人事档案（project-service）
+          // 项目管控/人事档案（project-service）
           "project-route",
           "org-route",
           "employee-route",
